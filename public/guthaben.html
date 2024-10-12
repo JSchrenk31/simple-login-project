@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guthaben</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+</head>
+<body>
+    <h1>Guthaben</h1>
+    <div id="balance">Lade Guthaben...</div>
+    <form id="update-form">
+        <label for="amount">Guthaben erhöhen:</label>
+        <input type="number" id="amount" name="amount" step="0.01" min="0" required>
+        <button type="submit">Aktualisieren</button>
+    </form>
+
+    <script>
+        async function loadBalance() {
+            try {
+                const response = await fetch('/get-balance');
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok');
+                }
+                const data = await response.json();
+                document.getElementById('balance').textContent = `Guthaben: ${data.balance} EUR`;
+            } catch (error) {
+                console.error('Fehler beim Laden des Guthabens:', error);
+                document.getElementById('balance').textContent = 'Fehler beim Laden des Guthabens';
+            }
+        }
+
+        async function updateBalance(amount) {
+            try {
+                const response = await fetch('/update-balance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount })  // Betrag als JSON senden
+                });
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok');
+                }
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);  // Fehlermeldung anzeigen
+                } else {
+                    alert(data.message);  // Erfolgsnachricht anzeigen
+                    loadBalance(); // Guthaben nach dem Update neu laden
+                }
+            } catch (error) {
+                console.error('Fehler beim Aktualisieren des Guthabens:', error);
+                alert('Fehler beim Aktualisieren des Guthabens');
+            }
+        }
+
+        document.getElementById('update-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const amount = document.getElementById('amount').value;
+            updateBalance(amount);
+        });
+
+        loadBalance(); // Guthaben beim Laden der Seite laden
+    </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sortiment</title>
+    <script>
+        let cart = [];
+
+        async function loadProducts() {
+            try {
+                const response = await fetch('/get-products');
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok');
+                }
+                const products = await response.json();
+                const productContainer = document.getElementById('products');
+                productContainer.innerHTML = '';
+
+                products.forEach(product => {
+                    const productElement = document.createElement('div');
+                    productElement.innerHTML = `
+                        <h3>${product.name}</h3>
+                        <p>Preis: ${product.preis}€</p>
+                        <p>Verfügbar: ${product.anzahl}</p>
+                        <input type="number" id="quantity-${product.produktid}" min="1" max="${product.anzahl}" placeholder="Anzahl">
+                        <button onclick="addToCart(${product.produktid}, '${product.name}', ${product.preis})">In den Warenkorb</button>
+                    `;
+                    productContainer.appendChild(productElement);
+                });
+            } catch (error) {
+                console.error('Fehler beim Laden der Produkte:', error);
+                document.getElementById('error').innerText = 'Fehler beim Laden der Produkte';
+            }
+        }
+
+        function addToCart(produktid, name, preis) {
+            const quantity = parseInt(document.getElementById(`quantity-${produktid}`).value);
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Bitte eine gültige Anzahl eingeben');
+                return;
+            }
+
+            const existingProduct = cart.find(item => item.produktid === produktid);
+            if (existingProduct) {
+                existingProduct.quantity += quantity;
+            } else {
+                cart.push({ produktid, name, preis, quantity });
+            }
+
+            updateCartDisplay();
+        }
+
+        function updateCartDisplay() {
+            const cartContainer = document.getElementById('cart');
+            cartContainer.innerHTML = '';
+            cart.forEach(item => {
+                const itemTotal = (item.quantity * item.preis).toFixed(2);
+                cartContainer.innerHTML += `<p>${item.name}: ${item.quantity} Stück - ${item.quantity * item.preis}€</p>`;
+            });
+        }
+
+        async function checkout() {
+    try {
+        const response = await fetch('/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(cart)  // Sende den Warenkorb-Inhalt an den Server
+        });
+
+        if (!response.ok) {
+            throw new Error('Netzwerkantwort war nicht ok');
+        }
+
+        const data = await response.json();  // Antwort des Servers lesen
+        if (data.error) {
+            alert(data.error);  // Fehlermeldung anzeigen, wenn vom Server zurückgegeben
+        } else {
+            alert('Bezahlung erfolgreich! QR-Code wird generiert.');
+            // Hier QR-Code anzeigen
+            document.getElementById('qr-code').src = data.qrCode;  // QR-Code als Bildquelle setzen
+            cart = [];  // Warenkorb leeren
+            updateCartDisplay();  // Warenkorbanzeige aktualisieren
+        }
+    } catch (error) {
+        console.error('Fehler beim Checkout:', error);
+        alert('Fehler beim Checkout');
+    }
+}
+
+
+        document.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+</head>
+<body>
+    <h1>Sortiment</h1>
+    <div id="products">Lädt...</div>
+    <h2>Warenkorb</h2>
+    <div id="cart"></div>
+    <button onclick="checkout()">Bezahlen</button>
+    <h2>QR-Code</h2>
+    <img id="qr-code" alt="QR Code">
+    <p id="error" style="color: red;"></p>
+</body>
+</html>
