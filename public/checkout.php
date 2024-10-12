@@ -10,10 +10,25 @@ if (!isset($_SESSION['userId'])) {
 $cart = json_decode(file_get_contents('php://input'), true);
 $totalCost = 0;
 
+// Überprüfen, ob alle Produkte in ausreichender Menge vorhanden sind
 foreach ($cart as $item) {
+    $stmt = $conn->prepare("SELECT anzahl FROM produkte WHERE produktid = ?");
+    $stmt->bind_param('i', $item['produktid']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $product = $result->fetch_assoc();
+
+    // Überprüfen, ob die gewünschte Menge verfügbar ist
+    if ($item['quantity'] > $product['anzahl']) {
+        echo json_encode(['error' => "Produkt '{$item['produktid']}' hat nicht genügend Bestand"]);
+        exit;
+    }
+
+    // Gesamtkosten berechnen
     $totalCost += $item['preis'] * $item['quantity'];
 }
 
+// Guthaben des Benutzers überprüfen
 $stmt = $conn->prepare("SELECT balance FROM users WHERE id = ?");
 $stmt->bind_param('i', $_SESSION['userId']);
 $stmt->execute();
@@ -43,8 +58,12 @@ require 'phpqrcode/qrlib.php';  // Pfad zu deiner QR-Code Bibliothek anpassen
 // QR-Code Inhalt vorbereiten
 $qrContent = '';
 foreach ($cart as $item) {
-    $qrContent .=$item['produktid']. $item['quantity'] . "\n";
+    // Format: ProduktID:Anzahl;
+    $qrContent .= $item['produktid'] . ':' . $item['quantity'] . ';';
 }
+
+// Entferne das letzte Semikolon, falls vorhanden
+$qrContent = rtrim($qrContent, ';');
 
 $qrCodeFile = 'qrcode_' . uniqid() . '.png';
 QRcode::png($qrContent, $qrCodeFile, 'L', 4, 2);
@@ -53,6 +72,8 @@ echo json_encode([
     'message' => 'Bezahlung erfolgreich',
     'qrCode' => $qrCodeFile
 ]);
+
+
 
 $conn->close();
 ?>

@@ -35,9 +35,17 @@
         }
 
         function addToCart(produktid, name, preis) {
+            const quantityInput = document.getElementById(`quantity-${produktid}`);
             const quantity = parseInt(document.getElementById(`quantity-${produktid}`).value);
+            const availableQuantity = parseInt(quantityInput.max);
+
             if (isNaN(quantity) || quantity <= 0) {
                 alert('Bitte eine gültige Anzahl eingeben');
+                return;
+            }
+
+            if (quantity > availableQuantity) {
+                alert('Die gewünschte Anzahl überschreitet den verfügbaren Bestand!')
                 return;
             }
 
